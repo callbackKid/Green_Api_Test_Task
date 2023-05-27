@@ -14,6 +14,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ setLogin }) => {
     event.preventDefault()
     console.log('Submitted:', { id, token, phone })
     setLogin(false)
+    fetch(`https://api.green-api.com/waInstance${id}/setSettings/${token}`)
   }
 
   return (
