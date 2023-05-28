@@ -1,40 +1,44 @@
-import { FormEvent, useState } from 'react'
+import { FormEvent, useContext, useState } from 'react'
 import './formStyles.css'
-
-interface LoginFormProps {
-  setLogin: (login: boolean) => void
-}
+import AuthContext from '../context'
+import { AuthContextProps, LoginFormProps } from '../types'
 
 export const LoginForm: React.FC<LoginFormProps> = ({ setLogin }) => {
-  const [id, setId] = useState('')
-  const [token, setToken] = useState('')
-  const [phone, setPhone] = useState('')
+  const { setAuthData } = useContext<AuthContextProps>(AuthContext)
+  const [idInstance, setId] = useState('')
+  const [apiTokenInstance, setToken] = useState('')
+  const [phoneNumber, setPhone] = useState('')
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
-    console.log('Submitted:', { id, token, phone })
+    console.log('Submitted:', { idInstance, apiTokenInstance, phoneNumber })
     setLogin(false)
-    fetch(`https://api.green-api.com/waInstance${id}/setSettings/${token}`)
+    setAuthData({
+      idInstance: idInstance,
+      apiTokenInstance: apiTokenInstance,
+      phoneNumber: phoneNumber,
+    })
+    fetch(`https://api.green-api.com/waInstance${idInstance}/getSettings/${apiTokenInstance}`)
   }
-
+  //waInstance{{idInstance}}/getSettings/{{apiTokenInstance}}
   return (
     <form onSubmit={handleSubmit} className="form">
       <div className="form-group">
-        <label htmlFor="id">ID</label>
+        <label htmlFor="id">idInstance</label>
         <input
           id="id"
           type="text"
-          value={id}
+          value={idInstance}
           onChange={(event) => setId(event.target.value)}
           required
         />
       </div>
       <div className="form-group">
-        <label htmlFor="token">Token</label>
+        <label htmlFor="token">apiTokenInstance</label>
         <input
           id="token"
           type="text"
-          value={token}
+          value={apiTokenInstance}
           onChange={(event) => setToken(event.target.value)}
           required
         />
@@ -44,7 +48,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ setLogin }) => {
         <input
           id="phone"
           type="tel"
-          value={phone}
+          value={phoneNumber}
           onChange={(event) => setPhone(event.target.value)}
           required
         />
