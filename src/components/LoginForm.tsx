@@ -11,16 +11,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ setLogin }) => {
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
-    console.log('Submitted:', { idInstance, apiTokenInstance, phoneNumber })
     setLogin(false)
     setAuthData({
       idInstance: idInstance,
       apiTokenInstance: apiTokenInstance,
       phoneNumber: phoneNumber,
     })
-    fetch(`https://api.green-api.com/waInstance${idInstance}/getSettings/${apiTokenInstance}`)
   }
-  //waInstance{{idInstance}}/getSettings/{{apiTokenInstance}}
+
   return (
     <form onSubmit={handleSubmit} className="form">
       <div className="form-group">

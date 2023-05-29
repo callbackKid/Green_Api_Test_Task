@@ -4,47 +4,55 @@ import { faPaperPlane } from '@fortawesome/free-solid-svg-icons'
 import { FormEvent, useContext, useEffect, useState } from 'react'
 import { AuthContextProps } from '../types'
 import AuthContext from '../context'
+import { deleteNotification, getSettings, receiveNotification, sendMessage } from '../requests'
 
 export const Chat = () => {
   const { authData } = useContext<AuthContextProps>(AuthContext)
 
-  const [messages, setMessages] = useState<string[]>([
-    'What happened last night?',
-    'You were drunk.',
-  ])
+  const [messages, setMessages] = useState<string[]>([])
   const [currentMessage, setCurrentMessage] = useState<string>('')
+  const [receiptId, setReceiptId] = useState<string | null>(null)
 
   useEffect(() => {
-    const data = fetch(
-      `https://api.green-api.com/waInstance${authData.idInstance}/getSettings/${authData.apiTokenInstance}`
-    )
-      .then((response) => response.json())
-      .then((data) => console.log(data))
-    console.log(data)
-  })
+    getSettings(authData)
+  }, [authData])
 
-  const sendMessage = (e: FormEvent) => {
-    e.preventDefault()
-    // setMessages([...messages, currentMessage])
-    // setCurrentMessage('')
-    fetch(
-      `https://api.green-api.com/waInstance${authData.idInstance}/sendMessage/${authData.apiTokenInstance}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chatId: '995591165224@c.us',
-          message: currentMessage,
-        }),
+  useEffect(() => {
+    const fetchNotification = async () => {
+      const receipt = await receiveNotification(authData)
+      setReceiptId(receipt)
+    }
+    fetchNotification()
+  }, [receiptId, authData])
+
+  useEffect(() => {
+    const deleteNotificationA = async () => {
+      if (receiptId) {
+        await deleteNotification(authData, receiptId)
       }
-    )
-      .then((response) => response.json())
-      .then((data) => {
-        console.log(data)
-        setMessages([...messages, currentMessage])
-        setCurrentMessage('')
-      })
-      .catch((error) => console.error('Error:', error))
+    }
+    deleteNotificationA()
+  }, [receiptId, authData])
+
+  useEffect(() => {
+    const deleteAndReceiveNotification = async () => {
+      if (receiptId) {
+        const deleteResult = await deleteNotification(authData, receiptId)
+        if (deleteResult.success && deleteResult.receiptId) {
+          setReceiptId(deleteResult.receiptId)
+        } else {
+          console.error('Failed to delete message:', deleteResult.error)
+        }
+      }
+    }
+    deleteAndReceiveNotification()
+  }, [receiptId, authData])
+
+  const sendMessageHandler = async (e: FormEvent) => {
+    e.preventDefault()
+    const { newMessages, newCurrentMessage } = await sendMessage(authData, currentMessage, messages)
+    setMessages(newMessages)
+    setCurrentMessage(newCurrentMessage)
   }
 
   return (
@@ -66,7 +74,7 @@ export const Chat = () => {
             ))}
           </div>
 
-          <form className="conversation-compose" onSubmit={sendMessage}>
+          <form className="conversation-compose" onSubmit={sendMessageHandler}>
             <input
               className="input-msg"
               name="input"
