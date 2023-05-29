@@ -11,7 +11,7 @@ export const getSettings = async (authData: AuthProps) => {
 export const sendMessage = async (
   authData: AuthProps,
   currentMessage: string,
-  messages: string[]
+  messages: { content: string; type: 'sent' | 'received' }[]
 ) => {
   try {
     const response = await fetch(
@@ -25,9 +25,11 @@ export const sendMessage = async (
         }),
       }
     )
-    const data = await response.json()
-    console.log(data)
-    return { newMessages: [...messages, currentMessage], newCurrentMessage: '' }
+    await response.json()
+    return {
+      newMessages: [...messages, { content: currentMessage, type: 'sent' as 'sent' }],
+      newCurrentMessage: '',
+    }
   } catch (error) {
     console.error('Error:', error)
     return { newMessages: messages, newCurrentMessage: currentMessage }
@@ -35,22 +37,24 @@ export const sendMessage = async (
 }
 
 export const receiveNotification = async (authData: AuthProps) => {
+  console.log(Math.random())
   const response = await fetch(
     `https://api.green-api.com/waInstance${authData.idInstance}/receiveNotification/${authData.apiTokenInstance}`
   )
   const data = await response.json()
+  let message = null
+  if (data === null) return { receiptId: '', message: '' }
 
   if (data.body && data.body.messageData) {
-    console.log(data.body.messageData, data.receiptId)
     if (data.body.messageData.textMessageData) {
-      console.log(data.body.messageData.textMessageData, data.receiptId)
+      message = data.body.messageData.textMessageData.textMessage
     }
     if (data.body.messageData.extendedTextMessageData) {
-      console.log(data.body.messageData.extendedTextMessageData, data.receiptId)
+      message = data.body.messageData.extendedTextMessageData.text
     }
   }
 
-  return data.receiptId
+  return { receiptId: data.receiptId, message: message }
 }
 
 export const deleteNotification = async (authData: AuthProps, receiptId: string) => {
@@ -65,8 +69,7 @@ export const deleteNotification = async (authData: AuthProps, receiptId: string)
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
-    const newReceiptId = await receiveNotification(authData)
-    return { success: true, receiptId: newReceiptId }
+    return { success: true }
   } catch (error) {
     console.error('Error:', error)
     return { success: false, error: error }

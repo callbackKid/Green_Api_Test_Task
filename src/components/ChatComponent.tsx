@@ -5,41 +5,48 @@ import { FormEvent, useContext, useEffect, useState } from 'react'
 import { AuthContextProps } from '../types'
 import AuthContext from '../context'
 import { deleteNotification, getSettings, receiveNotification, sendMessage } from '../requests'
+import { useCallback } from 'react'
 
 export const Chat = () => {
   const { authData } = useContext<AuthContextProps>(AuthContext)
 
-  const [messages, setMessages] = useState<string[]>([])
-  const [currentMessage, setCurrentMessage] = useState<string>('')
-  const [receiptId, setReceiptId] = useState<string | null>(null)
+  const [messages, setMessages] = useState<{ content: string; type: 'sent' | 'received' }[]>([
+    { content: 'A', type: 'sent' },
+  ])
+  const [currentMessage, setCurrentMessage] = useState('')
+  const [receiptId, setReceiptId] = useState(null)
+  const [messageDeleted, setMessageDeleted] = useState(false)
 
   useEffect(() => {
     getSettings(authData)
   }, [authData])
 
-  useEffect(() => {
-    const fetchNotification = async () => {
-      const receipt = await receiveNotification(authData)
-      setReceiptId(receipt)
+  const fetchNotification = useCallback(async () => {
+    if (!messageDeleted) {
+      const { receiptId, message } = await receiveNotification(authData)
+      if (receiptId) {
+        setReceiptId(receiptId)
+      }
+      if (message) {
+        setMessages((prevMessages) => [...prevMessages, { content: message, type: 'received' }])
+      }
+    } else {
+      setMessageDeleted(false)
     }
-    fetchNotification()
-  }, [receiptId, authData])
+  }, [])
 
   useEffect(() => {
-    const deleteNotificationA = async () => {
-      if (receiptId) {
-        await deleteNotification(authData, receiptId)
-      }
-    }
-    deleteNotificationA()
-  }, [receiptId, authData])
+    fetchNotification()
+    const intervalId = setInterval(fetchNotification, 10000)
+    return () => clearInterval(intervalId)
+  }, [fetchNotification])
 
   useEffect(() => {
     const deleteAndReceiveNotification = async () => {
       if (receiptId) {
         const deleteResult = await deleteNotification(authData, receiptId)
-        if (deleteResult.success && deleteResult.receiptId) {
-          setReceiptId(deleteResult.receiptId)
+        if (deleteResult.success) {
+          setMessageDeleted(true)
         } else {
           console.error('Failed to delete message:', deleteResult.error)
         }
@@ -50,9 +57,9 @@ export const Chat = () => {
 
   const sendMessageHandler = async (e: FormEvent) => {
     e.preventDefault()
-    const { newMessages, newCurrentMessage } = await sendMessage(authData, currentMessage, messages)
-    setMessages(newMessages)
-    setCurrentMessage(newCurrentMessage)
+    const result = await sendMessage(authData, currentMessage, messages)
+    setMessages(result.newMessages)
+    setCurrentMessage(result.newCurrentMessage)
   }
 
   return (
@@ -68,8 +75,8 @@ export const Chat = () => {
         <div className="conversation">
           <div className="conversation-container">
             {messages.map((message, i) => (
-              <div key={i} className="message sent">
-                {message}
+              <div key={i} className={`message ${message.type}`}>
+                {message.content}
               </div>
             ))}
           </div>
